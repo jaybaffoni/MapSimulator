@@ -1,4 +1,4 @@
-package com.jaybaffoni.objects;
+package com.jaybaffoni.tiles;
 
 import java.awt.Color;
 import java.awt.Graphics;

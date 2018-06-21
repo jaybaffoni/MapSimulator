@@ -3,6 +3,7 @@ package com.jaybaffoni.objects;
 import java.util.ArrayList;
 
 import com.jaybaffoni.structures.PriorityQueueMin;
+import com.jaybaffoni.tiles.RoadTile;
 
 public class Navigator {
 	

@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import com.jaybaffoni.structures.PriorityQueueMin;
+import com.jaybaffoni.tiles.EntranceTile;
+import com.jaybaffoni.tiles.ExitTile;
+import com.jaybaffoni.tiles.ParkingTile;
 
 public class Building {
 

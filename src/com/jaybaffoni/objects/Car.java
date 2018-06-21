@@ -5,6 +5,13 @@ import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.jaybaffoni.tiles.EntranceTile;
+import com.jaybaffoni.tiles.ExitTile;
+import com.jaybaffoni.tiles.ParkingSpaceTile;
+import com.jaybaffoni.tiles.ParkingTile;
+import com.jaybaffoni.tiles.RoadTile;
+import com.jaybaffoni.tiles.Tile;
+
 public class Car extends Vehicle{
 
 	private Tile currentTile;

@@ -17,18 +17,18 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 import com.jaybaffoni.objects.Building;
-import com.jaybaffoni.objects.BuildingTile;
 import com.jaybaffoni.objects.Car;
-import com.jaybaffoni.objects.EntranceTile;
-import com.jaybaffoni.objects.ExitTile;
 import com.jaybaffoni.objects.House;
 import com.jaybaffoni.objects.Navigator;
 import com.jaybaffoni.objects.Office;
-import com.jaybaffoni.objects.ParkingSpaceTile;
-import com.jaybaffoni.objects.ParkingTile;
-import com.jaybaffoni.objects.RoadTile;
-import com.jaybaffoni.objects.Tile;
 import com.jaybaffoni.objects.Vehicle;
+import com.jaybaffoni.tiles.BuildingTile;
+import com.jaybaffoni.tiles.EntranceTile;
+import com.jaybaffoni.tiles.ExitTile;
+import com.jaybaffoni.tiles.ParkingSpaceTile;
+import com.jaybaffoni.tiles.ParkingTile;
+import com.jaybaffoni.tiles.RoadTile;
+import com.jaybaffoni.tiles.Tile;
 
 public class MainMap {
 	

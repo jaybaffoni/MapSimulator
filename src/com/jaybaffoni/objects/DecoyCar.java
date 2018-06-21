@@ -5,6 +5,10 @@ import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.jaybaffoni.tiles.EntranceTile;
+import com.jaybaffoni.tiles.RoadTile;
+import com.jaybaffoni.tiles.Tile;
+
 public class DecoyCar extends Vehicle{
 	
 	private RoadTile road;
