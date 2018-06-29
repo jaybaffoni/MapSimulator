@@ -24,4 +24,10 @@ public class BuildingTile extends Tile{
 		return null;
 	}
 
+	@Override
+	public String toString() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }

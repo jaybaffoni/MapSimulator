@@ -14,25 +14,30 @@ import com.jaybaffoni.tiles.Tile;
 
 public class Car extends Vehicle{
 
-	private Tile currentTile;
+	protected Tile currentTile;
 	private RoadTile nextRoad = null;
 	private Building currentBuilding = null;
 	private Building destination = null;
-	private int ticksToWait = 0;
+	protected int ticksToWait = 0;
 	private String name;
-	private ArrayList<RoadTile> path;
+	protected ArrayList<RoadTile> path;
 	Navigator navSystem;
+	Internet net;
 	Tile[][] landMap;
 	enum State {
-		READY, MOVING, PARKING, PARKED, EXITING;
+		READY, MOVING, PARKING, PARKED, EXITING, DISABLED, REPAIRING;
 	}
 	State state;
+	int direction = 0;
+	// 0 is left to right, 1 is top to bottom, 2 is right to left, 3 is bottom to top;
 	int[] xCheck = {1,-1,0,0};
 	int[] yCheck = {0,0,1,-1};
 	//ArrayList<ParkingTile> pathToExit;
 	int currentDelay = 0;
 	int newRouteDelay = 0;
 	int maxDelay = 0;
+	int durability;
+	boolean towOnItsWay = false;
 	
 	public Car(String name, Tile[][] landMap, int x, int y) {
 		this.name = name;
@@ -41,10 +46,13 @@ public class Car extends Vehicle{
 		ticksToWait = currentTile.getWeight();
 		state = State.PARKED;
 		this.landMap = landMap;
+		
+		durability = ThreadLocalRandom.current().nextInt(1000, 8000);
 	}
 	
-	public void setNavSystem(Navigator navSystem) {
-		this.navSystem = navSystem;
+	public void setInternet(Internet net) {
+		this.net = net;
+		this.navSystem = net.getGPS();
 	}
 	
 	public boolean isReady() {
@@ -57,6 +65,14 @@ public class Car extends Vehicle{
 	
 	public int getY() {
 		return currentTile.getCoordinates().y;
+	}
+	
+	public Tile getCurrentTile() {
+		return currentTile;
+	}
+	
+	public void setCurrentTile(Tile current) {
+		this.currentTile = current;
 	}
 	
 	public String toString() {
@@ -79,9 +95,34 @@ public class Car extends Vehicle{
 	@Override
 	public void move() {
 		//System.out.println(this.toString());
-		//System.out.println("move called");
+		//System.out.println(direction);
 		//check if the car is going anywhere
-		
+		if(state == State.DISABLED) {
+			if(!towOnItsWay) {
+				System.out.println("calling");
+				AutoShop shop = net.getAutoShop();
+				if(shop != null) {
+					shop.addTarget(this);
+					towOnItsWay = true;
+				} 
+			}
+			
+			return;
+		}
+		//System.out.println(durability);
+		if((state == State.READY || state == State.MOVING) && durability <= 0) {
+			//car is worn out, needs to call for a tow
+			state = State.DISABLED;
+			towOnItsWay = false;
+			return;
+		}
+		if(state == State.REPAIRING) {
+			if(ticksToWait == 0) {
+				state = State.EXITING;
+			} else {
+				ticksToWait--;
+			}
+		}
 		if(state == State.PARKING) {
 			if(ticksToWait == 0) {
 				if(!checkSpaces()) {
@@ -94,7 +135,7 @@ public class Car extends Vehicle{
 						if(!next.isOccupied()) {
 							currentTile.setOccupied(false);
 							next.setOccupied(true);
-							currentTile = next;
+							setNext(next);
 							ticksToWait = currentTile.getWeight();
 							state = State.MOVING;
 							destination = currentBuilding;
@@ -103,7 +144,7 @@ public class Car extends Vehicle{
 					} else if(currentTile instanceof ParkingTile) {
 						ParkingTile loc = (ParkingTile)currentTile;
 						neighbors = loc.getParkingNeighbors();
-						System.out.println("from parking");
+						//System.out.println("from parking");
 						parkExit = loc.getExitTile();
 					} else if(currentTile instanceof EntranceTile){
 						EntranceTile loc = (EntranceTile)currentTile;
@@ -134,14 +175,14 @@ public class Car extends Vehicle{
 						//if null, move and make current space null
 						this.currentTile.setOccupied(false);
 						nextPark.setOccupied(true);
-						currentTile = nextPark;
+						setNext(nextPark);
 						ticksToWait = currentTile.getWeight();
 					} else {
 						//System.out.println("space was occupied");
 					}
 					return;
 				} else {
-					System.out.println("no connected spaces");
+					//System.out.println("no connected spaces");
 				}
 			} else {
 				ticksToWait--;
@@ -152,7 +193,7 @@ public class Car extends Vehicle{
 			if(ticksToWait == 0) {
 				///System.out.println("ready to move");
 				if(currentTile instanceof ParkingSpaceTile) {
-					System.out.println("leaving parking space");
+					//System.out.println("leaving parking space");
 					ParkingSpaceTile temp = (ParkingSpaceTile)currentTile;
 					Tile next = temp.getConnector();
 					//System.out.println("x: " + currentTile.getCoordinates().x + " , y: " + currentTile.getCoordinates().y);
@@ -160,7 +201,7 @@ public class Car extends Vehicle{
 						next = getConnectedParking();
 					}
 					if(!next.isOccupied()) {
-						currentTile = next;
+						setNext(next);
 						currentTile.setOccupied(true);
 						temp.setOccupied(false);
 						ticksToWait = currentTile.getWeight();
@@ -173,7 +214,7 @@ public class Car extends Vehicle{
 					ExitTile temp = (ExitTile) currentTile;
 					RoadTile next = temp.getExit();
 					if(!next.isOccupied()) {
-						currentTile = next;
+						setNext(next);
 						currentTile.setOccupied(true);
 						temp.setOccupied(false);
 						ticksToWait = currentTile.getWeight();
@@ -186,7 +227,7 @@ public class Car extends Vehicle{
 					if(temp.getExitTile() != null) {
 						ExitTile next = temp.getExitTile();
 						if(!next.isOccupied()) {
-							currentTile = next;
+							setNext(next);
 							currentTile.setOccupied(true);
 							temp.setOccupied(false);
 							ticksToWait = currentTile.getWeight();
@@ -195,7 +236,7 @@ public class Car extends Vehicle{
 						//theres a choice, so take the one leading out
 						ParkingTile next = temp.getTowardExitTile();
 						if(!next.isOccupied()) {
-							currentTile = next;
+							setNext(next);
 							currentTile.setOccupied(true);
 							temp.setOccupied(false);
 							ticksToWait = currentTile.getWeight();
@@ -204,7 +245,7 @@ public class Car extends Vehicle{
 						//there's no attached exit, and theres no preference, so take the next parkingtile
 						ParkingTile next = temp.getParkingNeighbors().get(0);
 						if(!next.isOccupied()) {
-							currentTile = next;
+							setNext(next);
 							currentTile.setOccupied(true);
 							temp.setOccupied(false);
 							ticksToWait = currentTile.getWeight();
@@ -218,7 +259,7 @@ public class Car extends Vehicle{
 					//System.out.println(options.size());
 					ParkingTile next = options.get(0);
 					if(!next.isOccupied()) {
-						currentTile = next;
+						setNext(next);
 						currentTile.setOccupied(true);
 						temp.setOccupied(false);
 						ticksToWait = currentTile.getWeight();
@@ -239,59 +280,74 @@ public class Car extends Vehicle{
 		}
 		
 		//see if path needs to be calculated
-		if(path == null || path.isEmpty()) {
-			if(navSystem == null) {
-				System.out.println("nav is null");
+		if(state == State.MOVING) {
+			if(path == null || path.isEmpty()) {
+				//System.out.println("Finding path");
+				if(navSystem == null) {
+					System.out.println("nav is null");
+				}
+				path = navSystem.findShortestPath(currentTile.getId(), destination.getEntrance().getId());
+				//System.out.println("path calculated: " + path.size());
 			}
-			path = navSystem.findShortestPath(currentTile.getId(), destination.getEntrance().getId());
-			//System.out.println("path calculated: " + path.size());
-		}
-		
-		if(ticksToWait == 0) {
-			//System.out.println(name + " moving");
-			//get next path
-			//System.out.println("x: " + currentTile.getCoordinates().x + " , y: " + currentTile.getCoordinates().y);
-			nextRoad = path.get(0);
 			
-			if(!nextRoad.isOccupied()) {
-				navSystem.updateDelay(currentTile.getId(), currentDelay, true);
-				currentDelay = 0;
-				path.remove(0);
-				//if null, move and make current space null
-				this.currentTile.setOccupied(false);
-				nextRoad.setOccupied(true);
-				this.currentTile = nextRoad;
-				ticksToWait = this.currentTile.getWeight();
-				if(currentTile.getId() == destination.getEntrance().getId()) {
-					currentBuilding = destination;
-					destination = null;
-					if(currentTile instanceof EntranceTile) {
-						state = State.PARKING;
-					} else {
-						state = State.READY;
+			if(ticksToWait == 0) {
+				//System.out.println(name + " moving");
+				//get next path
+				//System.out.println("x: " + currentTile.getCoordinates().x + " , y: " + currentTile.getCoordinates().y);
+				nextRoad = path.get(0);
+				
+				if(!nextRoad.isOccupied()) {
+					if(!(nextRoad instanceof EntranceTile)) {
+						durability -= 3;
 					}
+					navSystem.updateDelay(currentTile.getId(), currentDelay, true);
+					currentDelay = 0;
+					path.remove(0);
+					//if null, move and make current space null
+					this.currentTile.setOccupied(false);
+					nextRoad.setOccupied(true);
+					setNext(nextRoad);
+					ticksToWait = this.currentTile.getWeight();
+					if(currentTile.getId() == destination.getEntrance().getId()) {
+						currentBuilding = destination;
+						destination = null;
+						if(currentTile instanceof EntranceTile) {
+							state = State.PARKING;
+						} else {
+							state = State.READY;
+						}
+					}
+				} else {
+					currentDelay++;
+					//if its been a long, wait, try another path
+					maxDelay++;
+					newRouteDelay++;
+					/*if(maxDelay > 4096) {
+						//the wait is too long.  pick a new destination
+						System.out.println("taking too long");
+						state = State.READY;
+						return;
+					}*/
+					if(newRouteDelay > 96) {
+						navSystem.updateDelay(currentTile.getId(), currentDelay, false);
+						path = navSystem.findShortestPath(currentTile.getId(), destination.getEntrance().getId());
+						newRouteDelay = 0;
+					}
+					
 				}
 			} else {
-				currentDelay++;
-				//if its been a long, wait, try another path
-				maxDelay++;
-				newRouteDelay++;
-				if(maxDelay > 4096) {
-					//the wait is too long.  pick a new destination
-					state = State.READY;
-					return;
-				}
-				if(newRouteDelay > 96) {
-					navSystem.updateDelay(currentTile.getId(), currentDelay, false);
-					path = navSystem.findShortestPath(currentTile.getId(), destination.getEntrance().getId());
-					newRouteDelay = 0;
-				}
-				
+				ticksToWait--;
 			}
-		} else {
-			ticksToWait--;
 		}
 		
+		
+	}
+	
+	public void beginRepairs() {
+		state = State.REPAIRING;
+		path = null;
+		ticksToWait = 4096;
+		durability = ThreadLocalRandom.current().nextInt(3000, 5000);
 	}
 	
 	public boolean checkSpaces() {
@@ -305,7 +361,7 @@ public class Car extends Vehicle{
 					((ParkingSpaceTile) temp).setConnector(currentTile);
 					currentTile.setOccupied(false);
 					temp.setOccupied(true);
-					currentTile = temp;
+					setNext(temp);
 					state = State.PARKED;
 					ticksToWait = currentTile.getWeight();
 					return true;
@@ -331,13 +387,64 @@ public class Car extends Vehicle{
 		return null;
 	}
 	
+	public void setNext(Tile next) {
+		if(next.getX() == currentTile.getX()) {
+			//same x, car is moving up or down
+			if(next.getY() > currentTile.getY()) {
+				//next y is bigger, car is moving down
+				direction = 1;
+			} else {
+				//next y is smaller, car is moving up
+				direction = 3;
+			}
+		} else {
+			//same y, car is going horizontal
+			if(next.getX() > currentTile.getX()) {
+				//next x is bigger, car is moving L to R
+				direction = 0;
+			} else {
+				//next x is smaller, car is moving R to L
+				direction = 2;
+			}
+		}
+		
+		currentTile = next;
+	}
+	
 	public boolean isParked() {
 		return state == State.PARKED;
 	}
 	
+	public boolean isRepairing() {
+		return state == State.REPAIRING;
+	}
+	
 	public void paint(Graphics g) {
 		g.setColor(Color.BLUE);
+		if(state == State.DISABLED) {
+			g.setColor(Color.RED);
+		} else if (state == State.REPAIRING) {
+			g.setColor(Color.ORANGE);
+		}
         g.fillRect((getX() * 10) + 2, (getY() * 10) + 2, 6, 6);
+        //paint driver
+        g.setColor(Color.YELLOW);
+        switch (direction) {
+        	case 0:
+        		g.fillOval((getX() * 10) + 5, (getY() * 10) + 1, 3, 3);
+        		break;
+        	case 1:
+        		g.fillOval((getX() * 10) + 5, (getY() * 10) + 5, 3, 3);
+        		break;
+        	case 2:
+        		g.fillOval((getX() * 10) + 1, (getY() * 10) + 5, 3, 3);
+        		break;
+        	case 3:
+        		g.fillOval((getX() * 10) + 1, (getY() * 10) + 1, 3, 3);
+        		break;
+        }
+        
+        
 	}
 	
 }

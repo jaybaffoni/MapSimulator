@@ -11,6 +11,7 @@ public class ParkingTile extends Tile{
 	private ArrayList<ParkingTile> neighbors;
 	private ExitTile exit;
 	private ParkingTile towardExitTile;
+	private TruckParkingTile truckTile = null;
 	
 	public ParkingTile(int x, int y, int id,int speed) {
 		this.coordinates = new Point(x, y);
@@ -38,6 +39,14 @@ public class ParkingTile extends Tile{
 	
 	public ExitTile getExitTile() {
 		return exit;
+	}
+	
+	public void setTruckTile(TruckParkingTile truckTile) {
+		this.truckTile = truckTile;
+	}
+	
+	public TruckParkingTile getTruckTile() {
+		return truckTile;
 	}
 	
 	public ArrayList<ParkingTile> getParkingNeighbors(){

@@ -16,11 +16,14 @@ import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+import com.jaybaffoni.objects.AutoShop;
 import com.jaybaffoni.objects.Building;
 import com.jaybaffoni.objects.Car;
 import com.jaybaffoni.objects.House;
+import com.jaybaffoni.objects.Internet;
 import com.jaybaffoni.objects.Navigator;
 import com.jaybaffoni.objects.Office;
+import com.jaybaffoni.objects.TowTruck;
 import com.jaybaffoni.objects.Vehicle;
 import com.jaybaffoni.tiles.BuildingTile;
 import com.jaybaffoni.tiles.EntranceTile;
@@ -29,13 +32,14 @@ import com.jaybaffoni.tiles.ParkingSpaceTile;
 import com.jaybaffoni.tiles.ParkingTile;
 import com.jaybaffoni.tiles.RoadTile;
 import com.jaybaffoni.tiles.Tile;
+import com.jaybaffoni.tiles.TruckParkingTile;
 
 public class MainMap {
 	
 	//static MyCanvas canvas;
 	
 	static final int chunkSize = 16;
-	static int bluePrintWidth = 8;
+	static int bluePrintWidth = 7;
 	static int bluePrintHeight = 5;
 	static int gridWidth;
 	static int gridHeight;
@@ -45,24 +49,27 @@ public class MainMap {
 	static int roadCount = 0;
 	static int parkingCount = 0;
 	
-	static int speed = 1;
+	static int speed = 5;
 	static Navigator GPS;
 	
 	static int houseCount = 0;
 	static int officeCount = 0;
 	static Map<String, House> houses = new HashMap<String,House>();
 	static Map<String, Office> offices = new HashMap<String,Office>();
+	static ArrayList<AutoShop> autoShops = new ArrayList<AutoShop>();
+	static Internet net;
+	static boolean createParkedCar = true;
 	
-	static String[] pieces = {"littleHomes", "mediumHomes", "largeHomes", "shortBuilding", "tallBuilding", "highway"};
+	static String[] pieces = {"littleHomes", "mediumHomes", "largeHomes", "shortBuilding", "tallBuilding", "autoShop", "highway"};
 	static int[][] bluePrint/* = {{2,2,5,2,2},
 								{1,1,5,1,1},
 								{1,1,5,1,1},
-								{0,0,5,0,0},
+								{6,0,5,0,6},
 								{0,0,5,0,0},
 								{3,3,5,3,3},
 								{4,4,5,4,4}}*/;
 	
-	//static int[][] bluePrint = {{0},{4}};
+	//static int[][] bluePrint = {{6,4},{4,1}};
 	//static Car testCar;
 	//static Car parkedCar;
 
@@ -72,11 +79,11 @@ public class MainMap {
 		
 		for(int x = 0; x < bluePrintWidth; x++) {
 			for(int y = 0; y < bluePrintHeight; y++) {
-				bluePrint[x][y] = ThreadLocalRandom.current().nextInt(0, 5);
+				bluePrint[x][y] = ThreadLocalRandom.current().nextInt(0, 6);
 			}
 		}
 		for(int i = 0; i < bluePrintWidth; i++) {
-			bluePrint[i][bluePrintHeight-3] = 5;
+			bluePrint[i][bluePrintHeight-3] = 6;
 		}
 		
 		gridWidth = bluePrintWidth * chunkSize;
@@ -92,7 +99,7 @@ public class MainMap {
 	private static void createAndShowGUI() {
         JFrame f = new JFrame("Simulator");
         f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        MyPanel pan = new MyPanel(vehicles, landMap);
+        MyPanel pan = new MyPanel(vehicles, landMap, autoShops);
         f.add(pan);
         f.pack();
         f.setVisible(true);
@@ -118,6 +125,7 @@ public class MainMap {
 	static void setup() {
 		ArrayList<RoadTile> roadsToProcess = new ArrayList<RoadTile>();
 		vehicles = new ArrayList<Vehicle>();
+		net = new Internet();
 		//GPS = null;
 		landMap = new Tile[gridWidth][gridHeight];
 		for(int x = 0; x < bluePrintWidth; x++) {
@@ -140,24 +148,42 @@ public class MainMap {
 		}
 		
 		GPS = new Navigator(roads);
+		net.setGPS(GPS);
+		//Car thats stuck
+		//Car temp = new Car("(A)", landMap, 31, 15);
+		//vehicles.add(temp);
+		//autoShop.addTarget(temp);
+		//Car temp2 = new Car("(A)", landMap, 15, 15, net);
+		//vehicles.add(temp2);
+		//autoShop.addTarget(temp2);
 		
-		for(Vehicle v: vehicles) {
-			if(v instanceof Car) {
-				((Car) v).setNavSystem(GPS);
-			}
-		}
-		/*for(int x = 0; x < 100; x++) {
-			Car temp = new Car("(A)", GPS, landMap, x, 0);
+		/*TowTruck tt = new TowTruck("tt", landMap, 5,13, autoShop);
+		autoShop.addTowTruck(tt);
+		tt.setInternet(net);
+		
+		TowTruck tt2 = new TowTruck("tt2", landMap, 5,11, autoShop);
+		autoShop.addTowTruck(tt2);
+		tt2.setInternet(net);*/
+		
+		/*for(int x = 0; x < 1; x++) {
+			TowTruck temp = new TowTruck("(A)", landMap, x+1, 0);
 			//temp.setDestination(buildings.get("b5"));
-			temp.setDestination(getRandomBuilding());
+			temp.setDestination(getRandomOffice());
 			vehicles.add(temp);
-		}
-		for(int x = 0; x < 100; x++) {
+		}*/
+		/*for(int x = 0; x < 100; x++) {
 			Car temp = new Car("(A)", GPS, landMap, x, 79);
 			temp.setDestination(getRandomBuilding());
 			vehicles.add(temp);
 		}*/
-		
+		for(AutoShop autoShop: autoShops) {
+			autoShop.setInternet(net);
+		}
+		for(Vehicle v: vehicles) {
+			if(v instanceof Car) {
+				((Car) v).setInternet(net);
+			}
+		}
 		//parkedCar = new Car("c", roads, landMap, 0,0);
 		//vehicles.add(parkedCar);
 		//testCar = new Car("b", roads, landMap, 6,0);
@@ -187,7 +213,7 @@ public class MainMap {
 	static void getData(int bigX, int bigY, ArrayList<RoadTile> roadsToProcess) {
 		String pieceName = pieces[bluePrint[bigX][bigY]];
 		//System.out.println(pieceName);
-		String fileName = "src/com/jaybaffoni/" + pieceName + ".html";
+		String fileName = "src/mapPieces/" + pieceName + ".html";
 		File pieceFile = new File(fileName);
 		
 		int xOffset = bigX * chunkSize;
@@ -251,10 +277,12 @@ public class MainMap {
 						//roadsToProcess.add((RoadTile) temp);
 						//roadCount++;
 						if(pieceName.equals("littleHomes") || pieceName.equals("mediumHomes") || pieceName.equals("largeHomes")) {
-							Car car = new Car("(A)", landMap, x + xOffset, y + yOffset);
-							//car.setDestination(getRandomBuilding());
-							vehicles.add(car);
-							temp.setOccupied(true);
+							if(createParkedCar) {
+								Car car = new Car("(A)", landMap, x + xOffset, y + yOffset);
+								vehicles.add(car);
+								temp.setOccupied(true);
+							}
+							createParkedCar = !createParkedCar;
 						}
 						
 						break;
@@ -274,6 +302,11 @@ public class MainMap {
 						break;
 					case "008000":
 						//dark green, lawn
+						break;
+					case "00ffff":
+						//cyan, truck parking
+						temp = new TruckParkingTile(x + xOffset,y + yOffset,roadCount,12);
+						landMap[x + xOffset][y + yOffset] = temp;
 						break;
 					}
 					x++;
@@ -298,7 +331,7 @@ public class MainMap {
 	static public void getPaths(int bigX, int bigY) {
 		String pieceName = pieces[bluePrint[bigX][bigY]];
 		//System.out.println(pieceName);
-		String fileName = "src/com/jaybaffoni/" + pieceName + "Paths.txt";
+		String fileName = "src/mapPieces/" + pieceName + "Paths.txt";
 		File pieceFile = new File(fileName);
 		
 		int xOffset = bigX * chunkSize;
@@ -336,6 +369,9 @@ public class MainMap {
 					//c.setDestination(buildings.get("b5"));
 				}
 			}
+		}
+		for(AutoShop autoShop: autoShops) {
+			autoShop.move();
 		}
 		//testCar.move();
 		pan.repaint();
@@ -390,26 +426,6 @@ public class MainMap {
 		return(printMap(toPrint));
 	}
 	
-	static void createRoads() {
-		
-		try {
-			File roadFile = new File("src/com/jaybaffoni/roads2.txt");
-			BufferedReader br = new BufferedReader(new FileReader(roadFile));
-			String line = "";
-			while((line = br.readLine()) != null){
-				//System.out.println(line);
-				if(!line.startsWith("//")) {
-					String[] values = line.split(",");
-					//join(Integer.parseInt(values[0]), Integer.parseInt(values[1]));
-				}
-			}
-			br.close();
-		} catch (IOException e) {
-			System.out.println("IOException");
-			System.out.println(e.toString());
-		}
-		
-	}
 	
 	static void join(String a, String b, int xOffset, int yOffset) {
 		String[] aCoords = a.split(",");
@@ -450,12 +466,24 @@ public class MainMap {
 			ExitTile temp = (ExitTile) check;
 			RoadTile toAdd = (RoadTile) neighbor;
 			temp.setExit(toAdd);
+		} else if(check instanceof TruckParkingTile) {
+			TruckParkingTile temp = (TruckParkingTile) check;
+			if(neighbor instanceof TruckParkingTile) {
+				TruckParkingTile toAdd = (TruckParkingTile) neighbor;
+				temp.setNeighbor(toAdd);
+			} else if(neighbor instanceof ParkingTile) {
+				ParkingTile toAdd = (ParkingTile) neighbor;
+				temp.setParking(toAdd);
+			}
 		} else if(check instanceof ParkingTile) {
 			ParkingTile temp = (ParkingTile) check;
 			if(neighbor instanceof ExitTile) {
 				ExitTile toAdd = (ExitTile) neighbor;
 				temp.addExit(toAdd);
-			}else if(neighbor instanceof ParkingTile) {
+			} else if(neighbor instanceof TruckParkingTile) {
+				TruckParkingTile toAdd = (TruckParkingTile) neighbor;
+				temp.setTruckTile(toAdd);
+			} else if(neighbor instanceof ParkingTile) {
 				ParkingTile toAdd = (ParkingTile) neighbor;
 				temp.addNeighbor(toAdd);
 			}
@@ -715,6 +743,19 @@ public class MainMap {
 				}
 				
 				break;
+				
+			case "autoShop":
+				
+				ent = (EntranceTile)landMap[11 + xOffset][14 + yOffset];
+				exit = (ExitTile)landMap[4 + xOffset][14 + yOffset];
+				AutoShop autoShop = new AutoShop("auto", ent, exit, 0);
+				net.addBuilding("autoShop", autoShop);
+				for(int y = 13; y > 4; y-=2) {
+					TowTruck temp = new TowTruck("(A)", landMap, 5 + xOffset, y + yOffset, autoShop);
+					autoShop.addTowTruck(temp);
+				}
+				autoShops.add(autoShop);
+				break;
 		}
 		
 	}
@@ -726,16 +767,18 @@ class MyPanel extends JPanel {
     
     ArrayList<Vehicle> vehicles;
     Tile[][] landMap;
+    ArrayList<AutoShop> autoShops;
     
     int width;
     int height;
     
     Color dkGreen = Color.decode("#008000");
 
-    public MyPanel(ArrayList<Vehicle> vehicles, Tile[][] landMap) {
+    public MyPanel(ArrayList<Vehicle> vehicles, Tile[][] landMap, ArrayList<AutoShop> autoShops) {
         setBorder(BorderFactory.createLineBorder(Color.black));
         this.vehicles = vehicles;
         this.landMap = landMap;
+        this.autoShops = autoShops;
         
         width = landMap.length;
         height = landMap[0].length;
@@ -766,6 +809,9 @@ class MyPanel extends JPanel {
         
         for(Vehicle v: vehicles) {
         	v.paint(g);
+        }
+        for(AutoShop autoShop: autoShops) {
+        	autoShop.paint(g);
         }
         
         //System.out.println("painted");

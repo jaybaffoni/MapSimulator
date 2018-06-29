@@ -1,3 +1,11 @@
+/*
+ * 
+ * 
+ * 
+ * 
+ * 
+ */
+
 package com.jaybaffoni.tiles;
 
 import java.awt.Color;
@@ -20,9 +28,6 @@ public abstract class Tile {
 	}
 
 	public void setOccupied(boolean occupied) {
-		if(coordinates.x == 24 && coordinates.y == 13) {
-			//System.out.println("Changed target from " + occupied + " to " + !occupied);
-		}
 		this.occupied = occupied;
 	}
 	
@@ -33,25 +38,27 @@ public abstract class Tile {
 	public Point getCoordinates() {
 		return coordinates;
 	}
+	
+	public int getX() {
+		return coordinates.x;
+	}
+	
+	public int getY() {
+		return coordinates.y;
+	}
 
 	public void setWeight(int weight) {
 		this.weight = weight;
 	}
 
-
-
-	public String toString() {
-		if(occupied) {
-			return "(X)";
-		}
-		return "( )";
-	}
+	public abstract String toString();
 	
 	public abstract Color getColor();
 
-	public void paint(Graphics g) {
-		g.setColor(Color.decode("#000000"));
-        g.fillRect(getCoordinates().x * 10, getCoordinates().y * 10, 10, 10);
+	public abstract void paint(Graphics g);
+	
+	public void print() {
+		System.out.println("X: " + getX() + ", Y: " + getY());
 	}
 
 }
